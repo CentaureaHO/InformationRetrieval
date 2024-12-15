@@ -1,0 +1,15 @@
+{
+    "size": "{size}",
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "bool": {
+                        "must": [
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}

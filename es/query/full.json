@@ -1,0 +1,48 @@
+{
+    "size": "{top_k}",
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "bool": {
+                        "should": [
+
+                        ],
+                        "minimum_should_match": 1
+                    }
+                },
+                {
+                    "function_score": {
+                        "query": {
+                            "match_all": {}
+                        },
+                        "functions": [
+                            {
+                                "script_score": {
+                                    "script": {
+                                        "source": "cosineSimilarity(params.query_vector, 'body_vector') + 1.0",
+                                        "params": {
+                                            "query_vector": "{query_vector}"
+                                        }
+                                    }
+                                },
+                                "weight": 1.0
+                            },
+                            {
+                                "field_value_factor": {
+                                    "field": "pagerank",
+                                    "factor": 0.5,
+                                    "modifier": "none",
+                                    "missing": 0
+                                }
+                            }
+                        ],
+                        "boost_mode": "sum",
+                        "score_mode": "sum"
+                    }
+                }
+            ],
+            "filter": "{domain_filter}"
+        }
+    }
+}

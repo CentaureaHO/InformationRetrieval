@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ title }} - 网页快照</title>
+    <style>
+        .snapshot-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: #f8f9fa;
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+            z-index: 1000;
+            font-family: Arial, sans-serif;
+        }
+        .snapshot-content {
+            margin-top: 50px;
+        }
+    </style>
+    {{ head_content|safe }}
+</head>
+<body>
+    <div class="snapshot-bar">
+        这是 {{ snapshot_time }} 的网页快照 | <a href="{{ original_url }}">查看原网页</a>
+    </div>
+    <div class="snapshot-content">
+        {{ body_content|safe }}
+    </div>
+</body>
+</html>

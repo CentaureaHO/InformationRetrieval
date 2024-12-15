@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>搜索结果</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            background-color: #333;
+            color: white;
+        }
+
+        .header a {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+
+        .header a:hover {
+            text-decoration: underline;
+        }
+
+        .search-box {
+            margin-top: 20px;
+        }
+
+        .search-input {
+            width: 60%;
+            padding: 10px;
+            font-size: 18px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        .search-options {
+            margin: 15px 0;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        .search-options label {
+            margin-right: 10px;
+        }
+
+        .radio-group {
+            display: flex;
+            justify-content: space-around;
+            margin: 10px 0;
+        }
+
+        .checkbox-group {
+            display: flex;
+            justify-content: space-between;
+            width: 40%;
+            margin: 20px auto;
+        }
+
+        .domain-input {
+            display: none;
+            width: 40%;
+            margin: 10px auto;
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        .results {
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        .result-item {
+            margin-bottom: 20px;
+        }
+
+        .result-item a {
+            font-weight: bold;
+            color: #333;
+            text-decoration: none;
+        }
+
+        .result-item a:hover {
+            text-decoration: underline;
+        }
+
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            color: #666;
+        }
+
+        .search-suggestions,
+        .search-history {
+            position: absolute;
+            width: 60%;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 0 0 5px 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+
+        .search-suggestions ul,
+        .search-history ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .search-suggestions li,
+        .search-history li {
+            padding: 8px 15px;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .search-suggestions li:hover,
+        .search-history li:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <a href="/">一度搜索</a>
+            </div>
+            <div>
+                {% if logged_in %}
+                    <span>欢迎, {{ username }}</span>
+                    <a href="{{ url_for('logout') }}">登出</a>
+                {% else %}
+                    <a href="{{ url_for('login_route') }}">登录</a>
+                    <a href="{{ url_for('register_route') }}">注册</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="search-box">
+            <form action="{{ url_for('search_route') }}" method="get">
+                <div style="position: relative;">
+                    <input type="text" name="query" class="search-input" placeholder="请输入搜索内容" value="{{ query }}" required onfocus="handleInputFocus()" oninput="handleInputChange(this.value)">
+                    
+                    <!-- 搜索建议 -->
+                    <div class="search-suggestions" id="search-suggestions" style="display: none;">
+                        <ul id="suggestions-list"></ul>
+                    </div>
+                    
+                    <!-- 搜索历史 -->
+                    <div class="search-history" id="search-history" style="display: none;">
+                        <ul id="search-history-list"></ul>
+                    </div>
+                </div>
+
+                <!-- 基础搜索选项 -->
+                <div class="search-options">
+                    <p>请选择搜索类型：</p>
+                    <div class="radio-group">
+                        <label>
+                            <input type="radio" name="search_type" value="title" {% if search_type == 'title' %}checked{% endif %}> 标题搜索
+                        </label>
+                        <label>
+                            <input type="radio" name="search_type" value="full" {% if search_type == 'full' %}checked{% endif %}> 全文搜索
+                        </label>
+                        <label>
+                            <input type="radio" name="search_type" value="exact" {% if search_type == 'exact' %}checked{% endif %}> 短语查询
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 高级搜索选项 -->
+                <div class="search-options">
+                    <p>高级选项：</p>
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" name="domain" value="true" onchange="toggleDomainInput(this)" {% if domain %}checked{% endif %}> 搜索域名
+                        </label>
+                        <label>
+                            <input type="checkbox" name="fileonly" value="true" {% if fileonly %}checked{% endif %}> 只查询文档内容
+                        </label>
+                        <label>
+                            <input type="checkbox" name="wildcard" value="true" {% if wildcard %}checked{% endif %}> 通配查询
+                        </label>
+                    </div>
+
+                    <!-- 域名输入框 -->
+                    <input type="text" name="domain_value" id="domainInput" class="domain-input" value="{{ domain_value }}" placeholder="请输入域名" {% if domain %}style="display:block;"{% else %}style="display:none;"{% endif %}>
+                </div>
+
+                <button type="submit">搜索</button>
+            </form>
+
+            <!-- 最近搜索记录 -->
+            <div class="search-history" id="search-history" style="display: none;">
+                <ul id="search-history-list"></ul>
+            </div>
+        </div>
+
+        <div class="results">
+            {% if results %}
+                <h2>查询到的结果：</h2>
+                <ul>
+                    {% for result in results %}
+                        <li class="result-item">
+                            <a href="{{ result['url'] }}" target="_blank">{{ result['title'] }}</a><br>
+                            <small>URL: <a href="{{ result['url'] }}" target="_blank">{{ result['url'] }}</a></small><br>
+                            <p>{{ result['body'][:200] }}...</p>
+                            {% if not result['is_file'] %}
+                                <p><a href="{{ url_for('show_snapshot', url=result['url']) }}" target="_blank">网页快照</a></p>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+                <!-- 分页控件 -->
+                <div class="pagination">
+                    {% if page > 1 %}
+                        <a href="{{ url_for('search_route', query=query, search_type=search_type,
+                                            domain=domain, fileonly='true' if fileonly else '',
+                                            wildcard='true' if wildcard else '',
+                                            domain_value=domain_value, page=page-1) }}">上一页</a>
+                    {% endif %}
+                    <span>第 {{ page }} 页，共 {{ pages }} 页</span>
+                    {% if page < pages %}
+                        <a href="{{ url_for('search_route', query=query, search_type=search_type,
+                                            domain=domain, fileonly='true' if fileonly else '',
+                                            wildcard='true' if wildcard else '',
+                                            domain_value=domain_value, page=page+1) }}">下一页</a>
+                    {% endif %}
+                </div>
+            {% else %}
+                <p>没有找到相关的结果。</p>
+            {% endif %}
+        </div>
+
+        <div class="footer">
+            <p>© 2024 一度搜索，所有权利保留。</p>
+        </div>
+    </div>
+    <script>
+        function toggleDomainInput(checkbox) {
+            var domainInput = document.getElementById('domainInput');
+            if (checkbox.checked) {
+                domainInput.style.display = 'block';
+            } else {
+                domainInput.style.display = 'none';
+            }
+        }
+
+        // 页面加载时，根据复选框状态设置输入框显示
+        window.onload = function() {
+            var domainCheckbox = document.querySelector('input[name="domain"]');
+            toggleDomainInput(domainCheckbox);
+        };
+
+        function showSearchHistory() {
+            const queryInput = document.querySelector('input[name="query"]');
+            if (queryInput.value.trim() === '') {
+                fetch('{{ url_for("get_search_history") }}')
+                    .then(response => response.json())
+                    .then(data => {
+                        const searchHistoryList = document.getElementById('search-history-list');
+                        searchHistoryList.innerHTML = '';
+                        data.search_history.forEach(history => {
+                            const listItem = document.createElement('li');
+                            const link = document.createElement('a');
+                            link.href = `{{ url_for('search_route') }}?query=${history}&search_type={{ search_type }}&domain={{ domain }}&fileonly={{ 'true' if fileonly else '' }}&wildcard={{ 'true' if wildcard else '' }}&domain_value={{ domain_value }}`;
+                            link.textContent = history;
+                            listItem.appendChild(link);
+                            searchHistoryList.appendChild(listItem);
+                        });
+                        document.getElementById('search-history').style.display = 'block';
+                    });
+            }
+        }
+
+        function hideSearchHistory() {
+            const queryInput = document.querySelector('input[name="query"]');
+            if (queryInput.value.trim() !== '') {
+                document.getElementById('search-history').style.display = 'none';
+            }
+        }
+
+        document.addEventListener('click', function(event) {
+            const searchBox = document.querySelector('.search-box');
+            if (!searchBox.contains(event.target)) {
+                document.getElementById('search-history').style.display = 'none';
+            }
+        });
+
+        let suggestionTimeout;
+
+        function handleInputFocus() {
+            const queryInput = document.querySelector('input[name="query"]');
+            if (queryInput.value.trim() === '') {
+                showSearchHistory();
+            }
+        }
+
+        function handleInputChange(value) {
+            const searchHistory = document.getElementById('search-history');
+            const searchSuggestions = document.getElementById('search-suggestions');
+            
+            if (value.trim() === '') {
+                searchSuggestions.style.display = 'none';
+                showSearchHistory();
+            } else {
+                searchHistory.style.display = 'none';
+                clearTimeout(suggestionTimeout);
+                suggestionTimeout = setTimeout(() => fetchSuggestions(value), 300);
+            }
+        }
+
+        function fetchSuggestions(query) {
+            fetch(`{{ url_for('get_search_suggestions') }}?query=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    const suggestionsList = document.getElementById('suggestions-list');
+                    suggestionsList.innerHTML = '';
+                    
+                    if (data.suggestions && data.suggestions.length > 0) {
+                        data.suggestions.forEach(suggestion => {
+                            const listItem = document.createElement('li');
+                            const link = document.createElement('a');
+                            link.href = `{{ url_for('search_route') }}?query=${encodeURIComponent(suggestion.query)}&search_type={{ search_type }}&domain={{ domain }}&fileonly={{ 'true' if fileonly else '' }}&wildcard={{ 'true' if wildcard else '' }}&domain_value={{ domain_value }}`;
+                            link.textContent = suggestion.query;
+                            listItem.appendChild(link);
+                            suggestionsList.appendChild(listItem);
+                        });
+                        
+                        document.getElementById('search-suggestions').style.display = 'block';
+                    } else {
+                        document.getElementById('search-suggestions').style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching suggestions:', error);
+                    document.getElementById('search-suggestions').style.display = 'none';
+                });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+__pycache__/
+crawler/crawled_data/
+es/paraphrase-multilingual-MiniLM-L12-v2/

@@ -1,0 +1,19 @@
+{
+    "w2v_model": "paraphrase-multilingual-MiniLM-L12-v2",
+
+    "es": {
+        "addr": [
+            {
+                "host": "localhost",
+                "port": 9200
+            }
+        ],
+        "username": "elastic",
+        "password": "1234567",
+        "verify_certs": false,
+        "page_index": "web_pages",
+        "history_index": "search_history",
+        "user_index": "users",
+        "file_index": "files"
+    }
+}
